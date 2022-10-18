@@ -25,6 +25,43 @@ def print_files(arr,d):
     print("The directory: {} has files:".format(d) )
     for a in arr:
         print("  ",a)
+
+def Calculate_Reweight_Factor(onlyfiles, opts):
+    result = 0 
+    for file_name in onlyfiles:
+        if (file_name[-5:] == ".part"):
+            continue
+        
+        f_in = TFile.Open(opts.directory+'/'+file_name,"read")    
+        TTree_f = f_in.Get(opts.tree)
+        
+        
+        
+        if ( TTree_f != None and file_name[-6:-1] != ".part"):
+            print(file_name, TTree_f.GetEntries())
+            THisto_f = f_in.Get(opts.hist)
+            result += THisto_f.GetBinContent(3)
+
+        
+
+        
+
+        
+
+        f_in.Close()
+    return result
+
+def Init_N_Clean(opts,R_TAG,DSID):
+    if not os.path.exists(opts.output):
+        os.system("mkdir "+opts.output)
+    opts.output = opts.output+"/"+R_TAG+"_"+DSID
+    
+    if os.path.exists(opts.output):
+            os.system("rm -rf "+opts.output)
+    os.system("mkdir "+opts.output)
+    print("\nFolder of reweighted ntuples: ",opts.output)
+    return 
+
 def main():
     opts =  parse_options() 
     for i in r_tag:
@@ -44,44 +81,27 @@ def main():
 
     onlyfiles = [f for f in os.listdir(opts.directory) if os.path.isfile(os.path.join(opts.directory, f))]
     print_files(onlyfiles, opts.directory)
-    JZ_total_weight = 0
     
+    JZ_func = Calculate_Reweight_Factor(onlyfiles, opts)
+    print("Total reweight factor: ",JZ_func)
     
-    for ttree_name in onlyfiles:
-        fin = TFile.Open(opts.directory+'/'+ttree_name,"read")    
-        ttree_f = fin.Get(opts.tree)
-        
-        if opts.hist!= '':
-            thisto_f = fin.Get(opts.hist)
-        
-        nEntries = ttree_f.GetEntries()
-        JZ_total_weight += thisto_f.GetBinContent(3)
-        # print(thisto_f.GetBinContent(3))
-        # for i in range(0, nEntries):
-        #     ttree_f.GetEntry(i)
-        #     JZ_total_weight+=ttree_f.weight  #*   len(ttree_f.jet_ConstitPt)
-        
-        
-        fin.Close()
-    print("Total reweight factor: ",JZ_total_weight)
-    
-    if not os.path.exists(opts.output):
-        os.system("mkdir "+opts.output)
-    opts.output = opts.output+"/"+R_TAG+"_"+DSID
-    print("+I+",opts.output)
-    if os.path.exists(opts.output):
-            os.system("rm -rf "+opts.output)
-    os.system("mkdir "+opts.output)
-    print("\nFolder of rewweighted ntuples: ",opts.output)
-    for file_name in onlyfiles:            
+    Init_N_Clean(opts,R_TAG,DSID)
+
+    for file_name in onlyfiles:
+        if (file_name[-5:] == ".part"):
+            continue         
+
         fin = TFile.Open(opts.directory+"/"+file_name,"read")
         ttree_f = fin.Get(opts.tree)
+        if ( ttree_f == None ):
+            continue
         #t.Print()
         
         ttree_f.SetBranchStatus("*",1)
         ttree_f.SetBranchStatus("jet_ConstitE",0)
+        ttree_f.SetBranchStatus("jet_Jvt",0)
         
-        if JZ_total_weight==0:
+        if JZ_func==0:
             print("ERROR: sumw==0")
             return 
 
@@ -94,12 +114,14 @@ def main():
         print(path_to_output)
         if os.path.exists(path_to_output):
             os.system("rm -rf "+path_to_output)
-        fout = TFile(path_to_output,"recreate")
+        
+        fout = TFile(path_to_output,"create")
+        Reweighted_ttree = ttree_f.CloneTree()
 
-
-        Reweighted_ttree = ttree_f.CloneTree(0)
+        
         
         Reweighted_ttree.SetBranchStatus("*",1)
+        
         w = array('d',[-1])
         b = Reweighted_ttree.Branch("R_weight",w,"R_weight/D")
         #b.SetEntries(t.GetEntries())
@@ -112,20 +134,23 @@ def main():
         for ievt in range(nEntries):
             ttree_f.GetEntry(ievt)
             
-            w[0] = ttree_f.weight/JZ_total_weight
-            scale[0] = JZ_total_weight
-            Reweighted_ttree.Fill()
+            w[0] = ttree_f.weight/JZ_func
+            scale[0] = JZ_func
+            b.Fill()
+            b_scale.Fill()
             
-
-            
+        # Reweighted_ttree.Write()
+        print("__reweighted__"+file_name,Reweighted_ttree.GetEntries())
 
         # Reweighted_ttree.Write()
         
+        fin.Close()
+        Reweighted_ttree.Write()
         fout.Close()
         
         print("OUTPUT "+path_to_output+ " is created")
 
-        fin.Close()
+        
 
     
     return 
@@ -138,6 +163,8 @@ if __name__ == "__main__":
     main()
 
 
+    print("+I+")
+    print("+I+")
     print("+I+")
 
 
