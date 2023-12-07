@@ -2,12 +2,9 @@ import ctypes
 import os, sys
 import argparse
 from array import array
-from ROOT import *
-r_tag = ["MC20a","MC20d","MC20e"]
+import ROOT
+from configSettings import dsid, r_tag
 
-dsid = ["364700", "364701", "364702", "364703", "364704",
-"364705", "364706", "364707", "364708", "364709", 
-"364710", "364711", "364712"]
 def parse_options():
         import argparse
 
@@ -26,10 +23,41 @@ def print_files(arr,d):
     for a in arr:
         print("  ",a)
 
-def Calculate_Reweight_Factor(onlyfiles, opts):
+def getEvntNum(inputTTree, inputHist):
+    return inputTTree.GetEntries()
+def getEvntWei(inputTTree, inputHist):
+    return inputHist.GetBinContent(3)
+def accumulateReweightFactor(onlyfiles, opts, outDict={'eventNumber':getEvntNum,'eventWeight':getEvntWei}, logPrint=True):
+    result = 0 
+    resultDict = {}
+    for name in outDict.keys():
+        resultDict[name] = 0 
+    if logPrint:    print('start',resultDict)
+    for file_name in onlyfiles:
+        if (file_name[-5:] == ".part"):
+            continue
+        
+        f_in = ROOT.TFile.Open(opts.directory+'/'+file_name,"read")    
+        TTree_f = f_in.Get(opts.tree)
+        
+        
+        
+        if ( TTree_f != None and file_name[-6:-1] != ".part"):
+            THisto_f = f_in.Get(opts.hist)
+            result += THisto_f.GetBinContent(3)
+            if logPrint: print(file_name, TTree_f.GetEntries(), THisto_f.GetBinContent(3))
+            for var in outDict.keys():
+                resultDict[var] += outDict[var](TTree_f, THisto_f)
+        
+
+        f_in.Close()
+    if logPrint: print('end',resultDict)
+    return (result, resultDict)
+def Calculate_Reweight_Factor_Beam(onlyfiles, opts):
     result = 0 
     for file_name in onlyfiles:
         if (file_name[-5:] == ".part"):
+            print("ERROR: zombie file")
             continue
         
         f_in = TFile.Open(opts.directory+'/'+file_name,"read")    
@@ -39,14 +67,37 @@ def Calculate_Reweight_Factor(onlyfiles, opts):
         
         if ( TTree_f != None and file_name[-6:-1] != ".part"):
             print(file_name, TTree_f.GetEntries())
-            THisto_f = f_in.Get(opts.hist)
-            result += THisto_f.GetBinContent(3)
+            nEntries = TTree_f.GetEntries()
+            for ievt in range(nEntries):
+                TTree_f.GetEntry(ievt)
+                result += TTree_f.weight_beamSpotWeight
+        print("Current total weight is: {0}".format(result))
 
         
 
         
 
+        f_in.Close()
+    return result
+def Calculate_Reweight_Factor_mcEventWeight(onlyfiles, opts):
+    result = 0 
+    for file_name in onlyfiles:
+        if (file_name[-5:] == ".part"):
+            print("ERROR: zombie file")
+            continue
         
+        f_in = TFile.Open(opts.directory+'/'+file_name,"read")    
+        TTree_f = f_in.Get(opts.tree)
+        
+        
+        
+        if ( TTree_f != None and file_name[-6:-1] != ".part"):
+            print(file_name, TTree_f.GetEntries())
+            nEntries = TTree_f.GetEntries()
+            for ievt in range(nEntries):
+                TTree_f.GetEntry(ievt)
+                result += TTree_f.mcEventWeight
+        print("Current total weight is: {0}".format(result))
 
         f_in.Close()
     return result
@@ -63,6 +114,7 @@ def Init_N_Clean(opts,R_TAG,DSID):
     return 
 
 def main():
+    R_TAG, DSID = "", ""
     opts =  parse_options() 
     for i in r_tag:
         if i in opts.directory:
@@ -80,9 +132,12 @@ def main():
             opts.directory = opts.directory[:-1]   
 
     onlyfiles = [f for f in os.listdir(opts.directory) if os.path.isfile(os.path.join(opts.directory, f))]
-    print_files(onlyfiles, opts.directory)
+    # print_files(onlyfiles, opts.directory)
     
-    JZ_func = Calculate_Reweight_Factor(onlyfiles, opts)
+    reweightFactor,reweightDict =   accumulateReweightFactor(onlyfiles, opts, logPrint=False)
+    print('rtag={}'.format(R_TAG),'dsid={}'.format(DSID),reweightFactor)
+    print(reweightDict)
+    exit(0)
     print("Total reweight factor: ",JZ_func)
     
     Init_N_Clean(opts,R_TAG,DSID)
@@ -123,7 +178,9 @@ def main():
         Reweighted_ttree.SetBranchStatus("*",1)
         
         w = array('d',[-1])
+        # w_pileUP_x_beamSpot = array('d',[-1])
         b = Reweighted_ttree.Branch("R_weight",w,"R_weight/D")
+        # b_PUBSW = Reweighted_ttree.Branch("PU_BSW_weight",w_pileUP_x_beamSpot,"PU_BSW_weight/D")
         #b.SetEntries(t.GetEntries())
         scale = array('d',[-1])
         b_scale = Reweighted_ttree.Branch("sumw",scale,"sumw/D")
@@ -133,11 +190,19 @@ def main():
 
         for ievt in range(nEntries):
             ttree_f.GetEntry(ievt)
-            
+            # If the weight is called "weight", then :
+            # w[0] = ttree_f.weight/JZ_func
+            # If the weight is called "weight_beamSpotWeight", then :
+            # w[0] = ttree_f.weight_beamSpotWeight/JZ_func
+            # If the weight is called "mcEventWeight", then :
             w[0] = ttree_f.weight/JZ_func
             scale[0] = JZ_func
+            # w_pileUP_x_beamSpot[0] = ttree_f.weight_beamSpotWeight * ttree_f.weight_pileup
+            # if ( ttree_f.weight_pileup != 1.0) :
+                # print(ttree_f.weight_beamSpotWeight ,ttree_f.weight_pileup, w_pileUP_x_beamSpot)
             b.Fill()
             b_scale.Fill()
+            # b_PUBSW.Fill()
             
         # Reweighted_ttree.Write()
         print("__reweighted__"+file_name,Reweighted_ttree.GetEntries())
