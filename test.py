@@ -1,19 +1,21 @@
 import ctypes
 import os, sys
 import argparse
-from array import array
 from ROOT import *
 import psutil
+from configSettings import dsid, r_tag
 def ERROR_print(text_string):
     print('ERROR: '+text_string+'.')
     exit(1)
 
-class testOutout:
+class testOutput:
+    template = {'c':{}}
     def __init__(self, directoryInput, directoryOutput='', useSpecifier=False, specificDirName=[]):
         self.dirIn = directoryInput
         self.dirOut = directoryOutput
         self.disk_space = {'a':0, 'd':0, 'e':0,}
         self.rootFiles = []
+        self.scores = []  
         self.specificDirName = specificDirName
         self.useSpecifier = useSpecifier
         return
@@ -28,8 +30,6 @@ class testOutout:
                     self.getFilesRecursive(newPath, result)
                 if os.path.isfile(newPath):
                     result.append(newPath)
-                    print('appended')
-                    # print(result)
 
         return result
 
@@ -37,17 +37,27 @@ class testOutout:
 
     def checkFile(self, fileName, extension='.root', suffix='', midSubstring=[]):
         result = []
-        if os.path.isdir(dir):
+        if os.path.isdir(fileName):
             ERROR_print('{0} is a directory')
-        if os.path.isfile(f):
-            if not f[-len(extension):] == extension:
+        if os.path.isfile(fileName):
+            if not fileName[-len(extension):] == extension:
                 return False
-            if not f[:len(suffix)] == suffix:
+            if not fileName[:len(suffix)] == suffix:
                 return False
             for substring in midSubstring:
                 if not substring in fileName:
                     return False
-        return True
+        foundDSID = ''
+        for DSID in dsid:
+            if DSID in fileName:
+                foundDSID = DSID
+                break
+        foundRTAG = ''
+        for RTAG in r_tag:
+            if RTAG.upper() in fileName.upper():
+                foundRTAG = RTAG
+                break
+        return (0, foundRTAG, foundDSID)
 
     def print_files(self, arr,d):
         print("The directory: {} has files:".format(d) )
@@ -60,15 +70,33 @@ class testOutout:
         print("  {}".format(arr))
         return
     def countDiskSpace(self):
-        onlySubDirs = [f for f in os.listdir(self.dirIn) if os.path.isdir(os.path.join(self.dirIn, f))]
-        result = []
-        result = self.getFilesRecursive(self.dirIn, result)
-        # result = [x  for x in result if self.checkFile(x)]
-        print('------------------------------------')
-        for rootFile in result:
-            print(rootFile)
-        print('------------------------------------')
-        print(len(result))
+        dirToIterate = []
+        self.scores = []  
+        for dir in [self.dirIn, self.dirOut]:
+            if not dir == '':
+                dirToIterate.append(dir)
+        for dir in dirToIterate:
+            print('------------------------------------')
+            result = []
+            fileDiskSpaceDict = {}
+            result = self.getFilesRecursive(self.dirIn, result)
+            tempScore = self.template
+            for iter in result:
+
+                eval = self.checkFile(iter)
+                if eval == False:
+                    continue
+                if eval[1][-1].lower() in tempScore:
+                    if eval[2] in tempScore[eval[1][-1].lower()]:
+                        tempScore[eval[1][-1].lower()][eval[2]]['N'] += 1
+                    else:
+                        tempScore[eval[1][-1].lower()][eval[2]] = {}
+                        tempScore[eval[1][-1].lower()][eval[2]]['N'] = 1
+            print(tempScore)
+            self.scores.append(tempScore)
+            # print(len(result))
+            print('------------------------------------')
+        print(dirToIterate)
             # if self.useSpecifier:
                 # if any(specifier in subDir for specifier in specificDirName):
                     # iterateDir = self.dirIn+'/'+subDir
@@ -119,15 +147,12 @@ class testOutout:
         
         return 
 if __name__ == "__main__":
-    # Directory of ntuple root files: 
-    
-    # directory = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/MC23c'
-    # directory = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/user.dtimoshy.801174.MC23cIJTR30v01_CSSKUFO_221123_tree.root'
+    # Directories of root files: 
     directoryInput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/MC23c'
-    directoryOutput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/user.dtimoshy.801174.MC23cIJTR30v01_CSSKUFO_221123_tree.root'
+    directoryOutput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
 
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
     useSpecifier = False
-    mc23cFilesTest = testOutout(directoryInput, directoryOutput, useSpecifier, specificDirName)
+    mc23cFilesTest = testOutput(directoryInput, directoryOutput, useSpecifier, specificDirName)
     mc23cFilesTest.countDiskSpace()
