@@ -1,22 +1,22 @@
+import ROOT
 import ctypes
-import os, sys
 import argparse
-from ROOT import *
+import os, sys
 import psutil
-from configSettings import dsid, r_tag
+from configSettings import dsid, r_tag, ERROR_print
 import copy
-def ERROR_print(text_string):
-    print('ERROR: '+text_string+'.')
-    exit(1)
+
 
 def returnOne(x):
     return 1
 def returnX(x):
     return x
 def returnGB(x):
-    return x/1024/1024/1024
+    return x / (1024 ** 3)
 class testOutput:
+
     template = {'c':{}}
+
     def __init__(self, directoryInput, directoryOutput='', useSpecifier=False, specificDirName=[]):
         self.dirIn = directoryInput
         self.dirOut = directoryOutput
@@ -97,6 +97,7 @@ class testOutput:
         print("The directory: {} has subdir:".format(d) )
         print("  {}".format(arr))
         return
+
     def diplayInfo(self, name='N', func=returnX)->None:
         print('INFO')
         for iter in range(len(self.scores)):
@@ -116,34 +117,53 @@ class testOutput:
                         ERROR_print('variable {0} is not present in keys {1}'.format(name, score[rtag][dsid].keys()))
                     print('   ',func(score[rtag][dsid][name]))
         return None
+
+    def diplayDiff(self, name='N', func=returnX)->None:
+        print('DIFF INFO')
+        if not len(self.scores) == 2:
+            ERROR_print('incorrect size')
+
+        for iter in range(len(self.scores)):
+            score = self.scores[iter]
+            path = self.dirToIterate[iter]
+            if self.dirIn == path:
+                print('Input',path)
+            elif self.dirOut == path:
+                print('Output',path)
+            else:
+                print(path)
+            for rtag in score.keys():
+                print(rtag)
+                for dsid in score[rtag].keys():
+                    print('  ', dsid)
+                    if not name in score[rtag][dsid].keys() :
+                        ERROR_print('variable {0} is not present in keys {1}'.format(name, score[rtag][dsid].keys()))
+                    print('   ',func(score[rtag][dsid][name]))
+        return None
+
     def countDiskSpace(self):
         self.dirToIterate = []
         self.scores = []  
         for dir in [self.dirIn, self.dirOut]:
-            if not dir == '':
+            if dir:
                 self.dirToIterate.append(dir)
         for dir in self.dirToIterate:
             print('------------------------------------')
             result = []
             result = self.getFilesRecursive(dir, result)
-            print(self.template)
             tempScore = copy.deepcopy(self.template)
             for iter in result:
-
                 eval = self.checkFile(iter)
-                if eval == False:
+                if not eval :
                     continue
                 if eval[1][-1].lower() in tempScore:
                     if eval[2] in tempScore[eval[1][-1].lower()]:
                         tempScore[eval[1][-1].lower()][eval[2]]['N'] += 1
                         tempScore[eval[1][-1].lower()][eval[2]]['DiskSpace'] += os.path.getsize(iter)
                     else:
-                        tempScore[eval[1][-1].lower()][eval[2]] = {}
-                        tempScore[eval[1][-1].lower()][eval[2]]['N'] = 1
-                        tempScore[eval[1][-1].lower()][eval[2]]['DiskSpace'] = os.path.getsize(iter)
+                        tempScore[eval[1][-1].lower()][eval[2]] = {'N':1, 'DiskSpace':os.path.getsize(iter)}
             print(tempScore)
             self.scores.append(tempScore)
-            # print(len(result))
             print('------------------------------------')
         print(self.dirToIterate)
         return 
@@ -200,6 +220,9 @@ if __name__ == "__main__":
     directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
     directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/MC23c'
 
+    directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
+    directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO/MC23c'
+
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
     useSpecifier = False
@@ -210,5 +233,4 @@ if __name__ == "__main__":
     print(mc23cFilesTest.getTotalSum(func=returnX))
     print(mc23cFilesTest.getTotalSum(name='DiskSpace',func=returnGB))
     mc23cFilesTest.diplayInfo()
-    mc23cFilesTest.diplayInfo(func=returnOne)
     mc23cFilesTest.diplayInfo(name='DiskSpace',func=returnGB)
