@@ -13,6 +13,13 @@ def returnX(x):
     return x
 def returnGB(x):
     return x / (1024 ** 3)
+
+
+def getNumberOfEvents(path):
+    print(path)
+    return 10
+def getEventWeight(path):
+    return 3.3
 class testOutput:
 
     template = {'c':{}}
@@ -140,8 +147,27 @@ class testOutput:
                         ERROR_print('variable {0} is not present in keys {1}'.format(name, score[rtag][dsid].keys()))
                     print('   ',func(score[rtag][dsid][name]))
         return None
-
-    def countDiskSpace(self):
+    def fillVariable(self, name, funcInit='', funcAccum='')->None:
+        
+        for dir in [self.dirIn, self.dirOut]:
+            if dir:
+                self.dirToIterate.append(dir)
+        for dir in self.dirToIterate:
+            result = []
+            result = self.getFilesRecursive(dir, result)
+            tempScore = copy.deepcopy(self.template)
+            for iter in result:
+                eval = self.checkFile(iter)
+                if not eval :
+                    continue
+                if eval[1][-1].lower() in tempScore:
+                    if eval[2] in tempScore[eval[1][-1].lower()]:
+                        tempScore[eval[1][-1].lower()][eval[2]][name] += funcAccum(iter)
+                    else:
+                        tempScore[eval[1][-1].lower()][eval[2]][name] = funcInit(iter)
+            self.scores.append(tempScore)
+        return None
+    def fillFilePath(self):
         self.dirToIterate = []
         self.scores = []  
         for dir in [self.dirIn, self.dirOut]:
@@ -158,60 +184,19 @@ class testOutput:
                     continue
                 if eval[1][-1].lower() in tempScore:
                     if eval[2] in tempScore[eval[1][-1].lower()]:
-                        tempScore[eval[1][-1].lower()][eval[2]]['N'] += 1
-                        tempScore[eval[1][-1].lower()][eval[2]]['DiskSpace'] += os.path.getsize(iter)
+                        tempScore[eval[1][-1].lower()][eval[2]]['paths'] += [iter]
+                        # tempScore[eval[1][-1].lower()][eval[2]]['N'] += 1
+                        # tempScore[eval[1][-1].lower()][eval[2]]['DiskSpace'] += os.path.getsize(iter)
                     else:
-                        tempScore[eval[1][-1].lower()][eval[2]] = {'N':1, 'DiskSpace':os.path.getsize(iter)}
+                        tempScore[eval[1][-1].lower()][eval[2]] = {'paths':[iter]}
+                        # tempScore[eval[1][-1].lower()][eval[2]] = {'N':1, 'DiskSpace':os.path.getsize(iter), 'path':iter}
+                else:
+                    pass
             print(tempScore)
             self.scores.append(tempScore)
             print('------------------------------------')
         print(self.dirToIterate)
         return 
-            # if self.useSpecifier:
-                # if any(specifier in subDir for specifier in specificDirName):
-                    # iterateDir = self.dirIn+'/'+subDir
-                    # self.print_subDir(subDir, self.dirIn)
-        #             onlyFiles = [f for f in os.listdir(iterateDir) if os.path.isfile(os.path.join(iterateDir, f))]
-        #             print_files(onlyFiles, iterateDir)
-        #             for f in onlyFiles:
-        #                 if f[-5:] == '.root':
-        #                     rootFiles.append(iterateDir+'/'+f )
-                    
-        #                 file_stats = os.stat(iterateDir+'/'+f)
-
-        #                 for i in disk_space.keys():
-        #                     if 'MC23'+i in iterateDir+'/'+f:
-                                
-        #                         disk_space[i] += file_stats.st_size/ 2.0**20
-            
-        #         for f in onlyFiles:
-        #             if f[-5:] == '.root':
-        #                 rootFiles.append(iterateDir+'/'+f )
-                
-        #             file_stats = os.stat(iterateDir+'/'+f)
-
-        #             for i in disk_space.keys():
-        #                 if 'MC23'+i in iterateDir+'/'+f:
-                            
-        #                     disk_space[i] += file_stats.st_size/ 2.0**20
-            
-                
-                        
-        
-        # # print(rootFiles)
-        # sizes = {'a':0, 'd':0, 'e':0,}
-
-        # for j in rootFiles:
-        #     for i in sizes.keys():
-        #         if 'MC23'+i in j:
-        #             sizes[i]+=1
-        # print(sizes)
-        # a = {}
-        # lambda x : disk_space[x]/1024.0 , disk_space.keys()
-        # for i in disk_space.keys():
-        #     disk_space[i] = disk_space[i]/1024.
-        # print(disk_space)
-        # print(disk_space['a']+disk_space['d']+disk_space['e'])
 
 
         
@@ -220,17 +205,17 @@ if __name__ == "__main__":
     directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
     directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/MC23c'
 
-    directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
-    directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO/MC23c'
+    # directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
+    # directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO/MC23c'
 
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
     useSpecifier = False
     mc23cFilesTest = testOutput(directoryInput, directoryOutput, useSpecifier, specificDirName)
-    mc23cFilesTest.countDiskSpace()
+    mc23cFilesTest.fillFilePath()
     
     print('++++++++++++++++++++++++++++++')
-    print(mc23cFilesTest.getTotalSum(func=returnX))
-    print(mc23cFilesTest.getTotalSum(name='DiskSpace',func=returnGB))
-    mc23cFilesTest.diplayInfo()
-    mc23cFilesTest.diplayInfo(name='DiskSpace',func=returnGB)
+    # print(mc23cFilesTest.getTotalSum(func=returnX))
+    # print(mc23cFilesTest.getTotalSum(name='DiskSpace',func=returnGB))
+    mc23cFilesTest.diplayInfo('paths', len)
+    # mc23cFilesTest.diplayInfo(name='DiskSpace',func=returnGB)
