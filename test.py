@@ -12,14 +12,41 @@ def returnOne(x):
 def returnX(x):
     return x
 def returnGB(x):
-    return x / (1024 ** 3)
+    return  "{:0.1f} GB".format(round(x / (1024 ** 3)))
 
 
-def getNumberOfEvents(path):
-    print(path)
-    return 10
-def getEventWeight(path):
-    return 3.3
+def getNumberOfEvents(path)->int:
+    result = 0
+    file = ROOT.TFile.Open(path, 'read')
+    tree = file.Get('IsolatedJet_tree')
+    result = tree.GetEntries()
+    file.Close()
+    return result
+def getEventWeight(path)->float:
+    result = 0
+    file = ROOT.TFile.Open(path, 'read')
+    tree = file.Get('IsolatedJet_tree')
+    tree.SetBranchStatus("*",0)
+    tree.SetBranchStatus("weight",1)
+    nEntries = tree.GetEntries()
+    for ievt in range(nEntries):
+        tree.GetEntry(ievt)
+        result += tree.weight
+    file.Close()
+    return result
+
+def getEventReWeight(path)->float:
+    result = 0
+    file = ROOT.TFile.Open(path, 'read')
+    tree = file.Get('IsolatedJet_tree')
+    tree.SetBranchStatus("*",0)
+    tree.SetBranchStatus("R_weight",1)
+    nEntries = tree.GetEntries()
+    for ievt in range(nEntries):
+        tree.GetEntry(ievt)
+        result += tree.R_weight
+    file.Close()
+    return result
 class testOutput:
 
     template = {'c':{}}
@@ -147,25 +174,21 @@ class testOutput:
                         ERROR_print('variable {0} is not present in keys {1}'.format(name, score[rtag][dsid].keys()))
                     print('   ',func(score[rtag][dsid][name]))
         return None
-    def fillVariable(self, name, funcInit='', funcAccum='')->None:
+    def fillVariable(self, name, funcInit=None, funcAccum=None)->None:
         
-        for dir in [self.dirIn, self.dirOut]:
-            if dir:
-                self.dirToIterate.append(dir)
-        for dir in self.dirToIterate:
-            result = []
-            result = self.getFilesRecursive(dir, result)
-            tempScore = copy.deepcopy(self.template)
-            for iter in result:
-                eval = self.checkFile(iter)
-                if not eval :
-                    continue
-                if eval[1][-1].lower() in tempScore:
-                    if eval[2] in tempScore[eval[1][-1].lower()]:
-                        tempScore[eval[1][-1].lower()][eval[2]][name] += funcAccum(iter)
-                    else:
-                        tempScore[eval[1][-1].lower()][eval[2]][name] = funcInit(iter)
-            self.scores.append(tempScore)
+        print('Started variable {0}'.format(name))
+        for score in self.scores:
+            for campaign in score.keys():
+                for dsid in score[campaign].keys():
+                    for path in score[campaign][dsid]['paths']:
+                        if not name in score[campaign][dsid]:
+                            if funcInit:
+                                score[campaign][dsid][name] = funcInit(path)
+                        else:
+                            if funcAccum:
+                                score[campaign][dsid][name] += funcAccum(path)
+                        
+        print('Finished with variable {0}'.format(name))
         return None
     def fillFilePath(self):
         self.dirToIterate = []
@@ -185,14 +208,8 @@ class testOutput:
                 if eval[1][-1].lower() in tempScore:
                     if eval[2] in tempScore[eval[1][-1].lower()]:
                         tempScore[eval[1][-1].lower()][eval[2]]['paths'] += [iter]
-                        # tempScore[eval[1][-1].lower()][eval[2]]['N'] += 1
-                        # tempScore[eval[1][-1].lower()][eval[2]]['DiskSpace'] += os.path.getsize(iter)
                     else:
                         tempScore[eval[1][-1].lower()][eval[2]] = {'paths':[iter]}
-                        # tempScore[eval[1][-1].lower()][eval[2]] = {'N':1, 'DiskSpace':os.path.getsize(iter), 'path':iter}
-                else:
-                    pass
-            print(tempScore)
             self.scores.append(tempScore)
             print('------------------------------------')
         print(self.dirToIterate)
@@ -202,20 +219,30 @@ class testOutput:
         
 if __name__ == "__main__":
     # Directories of root files: 
-    directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
+    # directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
     directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/MC23c'
 
     # directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
-    # directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO/MC23c'
+    directoryInput  = '/eos/user/d/dtimoshy/MC23_CSSKUFO/MC23c'
 
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
     useSpecifier = False
     mc23cFilesTest = testOutput(directoryInput, directoryOutput, useSpecifier, specificDirName)
     mc23cFilesTest.fillFilePath()
+    mc23cFilesTest.fillVariable(name='N', funcInit=returnOne, funcAccum=returnOne)
+    mc23cFilesTest.fillVariable(name='DiskSize', funcInit=os.path.getsize, funcAccum=os.path.getsize)
+    # mc23cFilesTest.fillVariable(name='Entries', funcInit=getNumberOfEvents, funcAccum=getNumberOfEvents)
+    # mc23cFilesTest.fillVariable(name='EventWeight', funcInit=getEventWeight, funcAccum=getEventWeight)
+    # mc23cFilesTest.fillVariable(name='EventReWeight', funcInit=getEventReWeight, funcAccum=getEventReWeight)
     
     print('++++++++++++++++++++++++++++++')
     # print(mc23cFilesTest.getTotalSum(func=returnX))
     # print(mc23cFilesTest.getTotalSum(name='DiskSpace',func=returnGB))
-    mc23cFilesTest.diplayInfo('paths', len)
+    mc23cFilesTest.diplayInfo('paths', returnOne)
+    mc23cFilesTest.diplayInfo('N')
+    mc23cFilesTest.diplayInfo('DiskSize', returnGB)
+    # mc23cFilesTest.diplayInfo('Entries')
+    # mc23cFilesTest.diplayInfo('EventWeight')
+    # mc23cFilesTest.diplayInfo('EventReWeight')
     # mc23cFilesTest.diplayInfo(name='DiskSpace',func=returnGB)
