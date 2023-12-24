@@ -47,9 +47,34 @@ def getEventReWeight(path)->float:
         result += tree.R_weight
     file.Close()
     return result
+
+def listTTree(path):
+    result = 0
+    file = ROOT.TFile.Open(path, 'read')
+    tree = file.Get('IsolatedJet_tree')
+    tree.SetBranchStatus("*",0)
+    tree.Print()
+    file.Close()
+    exit(0)
+    return result
+
+def getJetsNumber(path)->int:
+    result = 0
+    file = ROOT.TFile.Open(path, 'read')
+    tree = file.Get('IsolatedJet_tree')
+    tree.SetBranchStatus("*",0)
+    tree.SetBranchStatus("jet_pt",1)
+    vec = ROOT.std.vector('float')()
+    tree.SetBranchAddress("jet_pt", vec)
+    nEntries = tree.GetEntries()
+    for ievt in range(nEntries):
+        tree.GetEntry(ievt)
+        result += vec.size()
+    file.Close()
+    return result
 class testOutput:
 
-    template = {'c':{}}
+    template = {'a':{},'c':{}}
 
     def __init__(self, directoryInput, directoryOutput='', useSpecifier=False, specificDirName=[]):
         self.dirIn = directoryInput
@@ -60,6 +85,7 @@ class testOutput:
         self.specificDirName = specificDirName
         self.useSpecifier = useSpecifier
         self.dirToIterate = []
+        self.listOfVariablesNames=set()
         return
 
     def getTotalSum(self, name='N', func=None):
@@ -133,7 +159,7 @@ class testOutput:
         return
 
     def diplayInfo(self, name='N', func=returnX)->None:
-        print('INFO')
+        print('INFO on {0}'.format(name))
         for iter in range(len(self.scores)):
             score = self.scores[iter]
             path = self.dirToIterate[iter]
@@ -174,6 +200,10 @@ class testOutput:
                         ERROR_print('variable {0} is not present in keys {1}'.format(name, score[rtag][dsid].keys()))
                     print('   ',func(score[rtag][dsid][name]))
         return None
+    def listVariableName(self)->None:
+        for i_Name in self.listOfVariablesNames:
+            print(i_Name)
+        return
     def fillVariable(self, name, funcInit=None, funcAccum=None)->None:
         
         print('Started variable {0}'.format(name))
@@ -184,12 +214,17 @@ class testOutput:
                         if not name in score[campaign][dsid]:
                             if funcInit:
                                 score[campaign][dsid][name] = funcInit(path)
+                                self.listOfVariablesNames.add(name)
                         else:
                             if funcAccum:
                                 score[campaign][dsid][name] += funcAccum(path)
                         
         print('Finished with variable {0}'.format(name))
         return None
+    def saveToPickle(self)->None:
+        import pickle
+        
+        return
     def fillFilePath(self):
         self.dirToIterate = []
         self.scores = []  
@@ -220,29 +255,40 @@ class testOutput:
 if __name__ == "__main__":
     # Directories of root files: 
     # directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
-    directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/MC23c'
+    directoryOutput = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/MC23a'
 
     # directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
-    directoryInput  = '/eos/user/d/dtimoshy/MC23_CSSKUFO/MC23c'
+    directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/MC23c'
 
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
     useSpecifier = False
     mc23cFilesTest = testOutput(directoryInput, directoryOutput, useSpecifier, specificDirName)
     mc23cFilesTest.fillFilePath()
-    mc23cFilesTest.fillVariable(name='N', funcInit=returnOne, funcAccum=returnOne)
+    mc23cFilesTest.fillVariable(name='Nfiles', funcInit=returnOne, funcAccum=returnOne)
     mc23cFilesTest.fillVariable(name='DiskSize', funcInit=os.path.getsize, funcAccum=os.path.getsize)
-    # mc23cFilesTest.fillVariable(name='Entries', funcInit=getNumberOfEvents, funcAccum=getNumberOfEvents)
+    mc23cFilesTest.fillVariable(name='Entries', funcInit=getNumberOfEvents, funcAccum=getNumberOfEvents)
     # mc23cFilesTest.fillVariable(name='EventWeight', funcInit=getEventWeight, funcAccum=getEventWeight)
     # mc23cFilesTest.fillVariable(name='EventReWeight', funcInit=getEventReWeight, funcAccum=getEventReWeight)
+    # mc23cFilesTest.fillVariable(name='Njets', funcInit=getJetsNumber, funcAccum=getJetsNumber)
     
+    
+    # print('++++++++++++++++++++++++++++++')
+    # mc23cFilesTest.fillVariable(name='None', funcInit=listTTree, funcAccum=None)
+
     print('++++++++++++++++++++++++++++++')
+    mc23cFilesTest.listVariableName()
     # print(mc23cFilesTest.getTotalSum(func=returnX))
     # print(mc23cFilesTest.getTotalSum(name='DiskSpace',func=returnGB))
     mc23cFilesTest.diplayInfo('paths', returnOne)
-    mc23cFilesTest.diplayInfo('N')
+    mc23cFilesTest.diplayInfo('Nfiles')
     mc23cFilesTest.diplayInfo('DiskSize', returnGB)
-    # mc23cFilesTest.diplayInfo('Entries')
+    mc23cFilesTest.diplayInfo('Entries')
     # mc23cFilesTest.diplayInfo('EventWeight')
     # mc23cFilesTest.diplayInfo('EventReWeight')
-    # mc23cFilesTest.diplayInfo(name='DiskSpace',func=returnGB)
+    # mc23cFilesTest.diplayInfo('Njets')
+
+    # import pickle
+    # filehandler = open('saveObject.pickle', 'rb') 
+    # from test import testOutput
+    # object = pickle.load(filehandler)
