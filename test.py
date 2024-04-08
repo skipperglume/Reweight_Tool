@@ -74,7 +74,7 @@ def getJetsNumber(path)->int:
     return result
 class testOutput:
 
-    template = {'a':{},'c':{}}
+    template = {'a' : {},'c' : {}, 'd': {}}
 
     def __init__(self, directoryInput, directoryOutput='', useSpecifier=False, specificDirName=[]):
         self.dirIn = directoryInput
@@ -253,12 +253,16 @@ class testOutput:
 
         
 if __name__ == "__main__":
+    '''
+    This code tests that the new reweighted files are in a proper structure: same amount of events, same amount of files. 
+    Check the resulting disk spaces.
+    '''
     # Directories of root files: 
     # directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
-    directoryOutput = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/MC23a'
+    directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/'
 
     # directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
-    directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/MC23c'
+    directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/'
 
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
