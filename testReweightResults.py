@@ -6,14 +6,14 @@ import psutil
 from configSettings import dsid, r_tag, ERROR_print
 import copy
 
-
 def returnOne(x):
     return 1
+
 def returnX(x):
     return x
+
 def returnGB(x):
     return  "{:0.1f} GB".format(round(x / (1024 ** 3)))
-
 
 def getNumberOfEvents(path)->int:
     result = 0
@@ -22,6 +22,7 @@ def getNumberOfEvents(path)->int:
     result = tree.GetEntries()
     file.Close()
     return result
+
 def getEventWeight(path)->float:
     result = 0
     file = ROOT.TFile.Open(path, 'read')
@@ -72,6 +73,7 @@ def getJetsNumber(path)->int:
         result += vec.size()
     file.Close()
     return result
+
 class testOutput:
 
     template = {'a' : {},'c' : {}, 'd': {}}
@@ -120,8 +122,6 @@ class testOutput:
                     result.append(newPath)
 
         return result
-
-
 
     def checkFile(self, fileName, extension='.root', suffix='', midSubstring=[]):
         result = []
@@ -250,8 +250,6 @@ class testOutput:
         print(self.dirToIterate)
         return 
 
-
-        
 if __name__ == "__main__":
     '''
     This code tests that the new reweighted files are in a proper structure: same amount of events, same amount of files. 
@@ -259,10 +257,12 @@ if __name__ == "__main__":
     '''
     # Directories of root files: 
     # directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
-    directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/'
+    # directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/'
+    directoryOutput = '/eos/user/d/dtimoshy/MC23_PFlow/MC23a/'
 
     # directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
-    directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/'
+    # directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/'
+    directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_PFlow/MC23a/'
 
     specificDirName = ['group.perf-jets.801174.MC23aIJTR30v01_CSSKUFO_20230530_tree.root']
     # useSpecifier = True
@@ -275,7 +275,6 @@ if __name__ == "__main__":
     # mc23cFilesTest.fillVariable(name='EventWeight', funcInit=getEventWeight, funcAccum=getEventWeight)
     # mc23cFilesTest.fillVariable(name='EventReWeight', funcInit=getEventReWeight, funcAccum=getEventReWeight)
     # mc23cFilesTest.fillVariable(name='Njets', funcInit=getJetsNumber, funcAccum=getJetsNumber)
-    
     
     # print('++++++++++++++++++++++++++++++')
     # mc23cFilesTest.fillVariable(name='None', funcInit=listTTree, funcAccum=None)
