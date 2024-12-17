@@ -258,7 +258,7 @@ if __name__ == "__main__":
     # Directories of root files: 
     # directoryInput = '/eos/user/d/dtimoshy/mc23_7GeV/MC23c/'
     # directoryOutput = '/eos/user/d/dtimoshy/MC23_CSSKUFO_7GeV/'
-    directoryOutput = '/eos/user/d/dtimoshy/MC23_PFlow/MC23a/'
+    directoryOutput = '/eos/user/d/dtimoshy/MC23_PFlow/RW_MC23a/'
 
     # directoryInput = '/eos/user/d/dtimoshy/mc23/MC23c/'
     # directoryInput  = '/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_UFO_7GeV/'
