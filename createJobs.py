@@ -4,7 +4,6 @@ import argparse
 import sys
 from datetime import datetime
 
-
 '''
 This script is used to create a list of commands to be run on the cluster via HTCondor.
 The space pool is 20 GB per processing node.
@@ -42,7 +41,7 @@ queue
 templateCondorJobDated = '''
 executable            = condorTest.py
 arguments             = $(ClusterId) $(ProcId) {date} {dsid}
-# input                 = input/mydata.$(ProcId)
+input                 = ntuple_801174.tree.root
 output                = batch/output_{date}.$(ClusterId).$(ProcId).out
 error                 = batch/error_{date}.$(ClusterId).$(ProcId).err
 log                   = batch/log_{date}.$(ClusterId).$(ProcId).log
@@ -50,7 +49,21 @@ log                   = batch/log_{date}.$(ClusterId).$(ProcId).log
 +MaxRuntime           = 10
 queue
 '''
+# input                 = reweight.py
 
+templateCondorJobArgsDated = '''
+executable            = condorTest.py
+arguments             = $(ClusterId) $(ProcId) {date} {dsid} {directoryArg} {outputArg}
+transfer_input_files  = reweight.py,configSettings.py,ntuple_801174.tree.root
+output                = batch/output_{date}.$(ClusterId).$(ProcId).out
+error                 = batch/error_{date}.$(ClusterId).$(ProcId).err
+log                   = batch/log_{date}.$(ClusterId).$(ProcId).log
+notification          = Always
+notify_user           = "denys.timoshyn@cern.ch"
++JobFlavour           = "workday"
++MaxRuntime           = 10
+queue
+'''
 
 def getDiskSpaceOfInput(pathToInput)->float:
     '''
@@ -109,23 +122,38 @@ def condorTest(dsid, dryRun=True, pathToCondorSub='./condorSub/'):
     print(dateSub)
     pathToCondorSub += 'condorTest.sub'
     
+    directoryArg = f'directory=/eos/atlas/atlascerngroupdisk/perf-jets/JETDEF/MC23_SmallR_PFlow/MC23a/group.perf-jets.{dsid}.MC23aIJTR30v01_PFLOW_22112024_v01_tree.root'
     
-    condorJob = templateCondorJobDated
-    condorJob = condorJob.format(date=dateSub, dsid=dsid)
-    
+    outputArg = 'output=/eos/user/d/dtimoshy/MC23_PFlow/condorMC23a'
+
+    condorJob = templateCondorJobArgsDated
+    condorJob = condorJob.format(date=dateSub, dsid=dsid, directoryArg=directoryArg, outputArg=outputArg)
     
     with open(pathToCondorSub, 'w') as f:
         f.write(condorJob)
     if dryRun:
-        print(f'To execute run: condor_submit {pathToCondorSub}')
+        print(f'To execute run:\n  condor_submit {pathToCondorSub}')
     else:
         os.system(f'condor_submit {pathToCondorSub}')
+
+def createCondorSubFile(dsid, dateSub, pathToCondorSub='./condorSub/'):
+    return
     
 def cleanBatch():
     '''
     Clean the batch directory.
     '''
     os.system('rm  batch/*')
+
+def main(args:argparse.Namespace):
+    '''
+    Main function for producing a set of [.sub] files for condor to run.
+    '''
+    for dsid in DSIDs:
+        print(dsid)
+        condorTest(dsid)
+    
+    return
  
 if __name__ == '__main__':
     
@@ -145,6 +173,8 @@ if __name__ == '__main__':
         
     # Get number of standard arguments:
     exit(0)
+
+# /pool/condor/dir_159793
     
     
 # Error in <TNetXNGFile::Open>: [ERROR] Server responded with an error: [3010] Unable to open file __reweighted__group.perf-jets.42165003._000001.tree.root; Operation not permitted
